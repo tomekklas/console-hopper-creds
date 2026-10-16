@@ -1,0 +1,27 @@
+Console Hopper Creds turns the AWS SAML sign-in page into a source of temporary command-line credentials. Every role your identity provider lists gets a Keys button; a click asks AWS's token service for that role's temporary keys and shows them in a dialog on the same page, ready to paste wherever you need them. Keys for all roles does the same for the whole list in one go and hands you one credentials file with a profile per role.
+
+WHAT YOU GET
+
+Each role's keys in every form you might need: environment variables for bash and zsh, cmd, PowerShell and fish, a profile block for ~/.aws/credentials, the individual values, configure commands, a credential-process JSON, a dotenv block, container and infrastructure-tool snippets, SDK snippets for several languages, a password-manager item, raw JSON, and your own templates with placeholders. Secrets are masked until you choose to reveal them. Each block has a copy button; the credentials file can be downloaded.
+
+Keys for all roles lists every role with its status and expiry, lets you copy any one row, and exports the lot as a credentials file, a config file or any other format.
+
+With Console Hopper installed, the buttons sit inside its role rows, a Keys for all roles button sits in its right-hand column, and Creds Settings appears at the end of its side menu. Narrow the picker with Console Hopper's filters or search and Keys for all roles asks only for the roles shown. Without Console Hopper, the buttons sit next to the roles on the plain sign-in page.
+
+SETTINGS
+
+Session length (follow what your identity provider asks for, or a fixed 15 minutes to 12 hours; when a role allows less, the extension retries with a shorter length and tells you). Profile name pattern. Region for environment variables and profiles. Your own output templates.
+
+PRIVACY
+
+The extension runs only on the AWS SAML sign-in page. When you click Keys it reads the page's own SAML response and sends it, with the role you chose, to AWS's token service, which answers with temporary credentials. Those are shown to you and exist only while the dialog is open. Nothing is stored, logged, or sent anywhere but AWS. There is no server, no telemetry, no analytics. Settings are kept in Chrome's extension storage. No host permissions are requested beyond the sign-in page itself.
+
+FOR ADMINISTRATORS
+
+This is a separate extension with its own ID so that organisations which do not want console sign-ins turned into keys can block it, or set enabled: false by Chrome enterprise policy, without touching Console Hopper. The extension adds no capability a user does not already have: the SAML response passes through their browser and the AWS CLI accepts it. Preventing key issuance is an AWS-side matter (role trust policies and STS deny statements).
+
+OPEN SOURCE
+
+MIT licensed. Source, privacy policy and issue tracker: https://github.com/tomekklas/console-hopper-creds
+
+Console Hopper Creds is community-built and is not affiliated with or endorsed by Amazon Web Services. "AWS" is a trademark of Amazon.com, Inc. or its affiliates.

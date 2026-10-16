@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Console Hopper Creds — settings</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: #16191f; background: #f7f6f2; }
+  @media (prefers-color-scheme: dark) { body { color: #e8e6df; background: #171a1f; } .card { background: #1f2329 !important; border-color: #343a43 !important; } input, select, textarea { background: #121419; color: #e8e6df; border-color: #4a515b !important; } }
+  main { max-width: 720px; margin: 0 auto; padding: 28px 20px 60px; }
+  h1 { font-size: 20px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .lede { color: #6c757d; margin: 0 0 20px; }
+  .card { background: #fff; border: 1px solid #e1e4e8; border-radius: 8px; padding: 16px 18px; margin-bottom: 14px; }
+  .card h2 { font-size: 14px; margin: 0 0 10px; }
+  label { display: block; font-weight: 500; margin: 10px 0 4px; }
+  .hint { font-size: 12.5px; color: #6c757d; margin: 2px 0 0; }
+  input[type=text], input[type=number], select, textarea { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
+  textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; min-height: 90px; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; background: rgba(127,127,127,0.12); padding: 1px 4px; border-radius: 3px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 160px; }
+  button { font: inherit; padding: 7px 14px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+  button.primary { background: #0073bb; border-color: #0073bb; color: #fff; }
+  button.danger { color: #a7352c; }
+  .tpl { border-top: 1px dashed #d5d9de; padding-top: 10px; margin-top: 10px; }
+  .status { color: #1e7a3c; font-size: 13px; margin-left: 10px; }
+  .keys { font-size: 12px; color: #6c757d; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Console Hopper Creds · settings</h1>
+  <p class="lede">What the Keys dialog shows and how long the keys last. Keys themselves are never stored anywhere.</p>
+
+  <form id="f">
+    <div class="card">
+      <h2>Session length</h2>
+      <label for="duration">Ask AWS STS for</label>
+      <select id="duration">
+        <option value="saml">what your identity provider asks for (SessionDuration), else 1 hour</option>
+        <option value="900">15 minutes</option>
+        <option value="3600">1 hour</option>
+        <option value="7200">2 hours</option>
+        <option value="14400">4 hours</option>
+        <option value="28800">8 hours</option>
+        <option value="43200">12 hours</option>
+      </select>
+      <p class="hint">A role allows at most its own maximum session duration. When AWS refuses the length asked for, the add-on retries at 1 hour, then 15 minutes, and says so in the dialog.</p>
+    </div>
+
+    <div class="card">
+      <h2>Profiles</h2>
+      <label for="profilePattern">Profile name pattern</label>
+      <input type="text" id="profilePattern" maxlength="80" placeholder="{account}-{role}">
+      <p class="hint">Placeholders: <code>{account}</code> (the name shown on the picker), <code>{accountId}</code>, <code>{role}</code>. Characters other than letters, digits, <code>_ . @ -</code> become <code>-</code>.</p>
+      <label for="region">Region for env vars and profiles</label>
+      <input type="text" id="region" maxlength="32" placeholder="leave empty to use the sign-in page's region">
+      <p class="hint">Empty: the region of the sign-in page (<code>eu-west-1.signin.aws.amazon.com</code> gives <code>eu-west-1</code>), or <code>us-east-1</code> on the global page. The same region picks the STS endpoint.</p>
+    </div>
+
+    <div class="card">
+      <h2>Your templates</h2>
+      <p class="hint">Any format the built-in list lacks: a wrapper script, Ansible, Terragrunt, your team's tool. Each becomes a chip under “More formats”. Placeholders: <span class="keys" id="keys"></span></p>
+      <div id="templates"></div>
+      <p><button type="button" id="addTpl">Add template</button></p>
+    </div>
+
+    <p><button type="submit" class="primary">Save</button><span class="status" id="status"></span></p>
+  </form>
+
+  <div class="card">
+    <h2>Privacy</h2>
+    <p class="hint">The add-on reads the SAML response on AWS's sign-in page, sends it with the chosen role to AWS STS (<code>AssumeRoleWithSAML</code>) and shows what STS returns. Nothing is stored, logged or sent anywhere else. Full policy: <a href="https://github.com/tomekklas/console-hopper-creds/blob/main/PRIVACY.md" target="_blank" rel="noopener">PRIVACY.md</a>.</p>
+  </div>
+</main>
+<script src="options.js"></script>
+</body>
+</html>

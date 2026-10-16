@@ -1,0 +1,121 @@
+CONSOLE HOPPER CREDS 0.1.0 — CHROME WEB STORE SUBMISSION
+Paste-ready plain text. One block per dashboard field, de-wrapped, no
+markdown. The Detailed description field is the separate, already
+paste-ready file in this folder: detailed-description.txt
+
+
+--- Name -------------------------------------------------------------
+
+Console Hopper Creds
+
+
+--- Summary / short description (max 132 chars; this is 116) ----------
+
+Turn an AWS SAML sign-in into temporary CLI keys, one role or all of them: env vars, a credentials profile and more.
+
+
+--- Detailed description ---------------------------------------------
+
+See detailed-description.txt in this folder — paste it whole.
+
+
+--- Category ---------------------------------------------------------
+
+Developer Tools
+
+
+--- Language ---------------------------------------------------------
+
+English (United States)
+
+
+--- Single purpose description (max 1000 chars; this is 908) -----------
+
+Console Hopper Creds adds a Keys button to each role on the AWS Identity Federation sign-in page (https://signin.aws.amazon.com/saml and its regional hosts) and a Keys for all roles button for the whole list. When the user clicks one, the extension exchanges the page's own SAML response for temporary credentials by calling AWS Security Token Service (AssumeRoleWithSAML) for the chosen role or roles, and shows the result in a dialog on that page in the forms a developer pastes into a terminal or a config file: environment variables for four shells, a credentials-file profile, the individual values, further snippet formats and the user's own templates. The credentials exist only while the dialog is open; nothing is stored, logged or sent anywhere but AWS. Settings cover session length, profile-name pattern, region and templates. It does one thing: turn a SAML sign-in into command-line credentials.
+
+
+--- Permission justification: storage (max 1000 chars; this is 426) ----
+
+Persists the user's settings in chrome.storage.sync: the session length to ask AWS for, the profile-name pattern, the region written into environment variables and profiles, the shell and output format last chosen, and the user's own output templates. Never credentials, never the SAML response. chrome.storage.managed is read for one key, enabled, so an administrator can switch the extension off by Chrome enterprise policy.
+
+
+(The dashboard asks for a host permission justification because of the
+content script's match patterns; there is no other host permission.)
+
+--- Host permission justification (max 1000 chars; this is 847) --------
+
+The content script runs only on https://signin.aws.amazon.com/saml and https://*.signin.aws.amazon.com/saml, AWS's SAML role picker. There it reads the page's own SAMLResponse form field to list the roles the identity provider granted, places a Keys button beside each role and a Keys for all roles button, and shows the credentials dialog when the user clicks one. No other page is touched and page content is never transmitted anywhere but to AWS: when the user clicks Keys, the SAML response and the chosen role ARN go to AWS Security Token Service (sts.<region>.amazonaws.com, or the GovCloud / China equivalent) in an AssumeRoleWithSAML request made by the service worker. That endpoint permits any origin, so no host permission for it is declared. The extension makes no other network requests, and none to servers controlled by its authors.
+
+
+--- Are you using remote code? --------------------------------------
+
+No, I am not using remote code.
+
+All code is contained in the package. There is no eval, no new Function,
+no remotely hosted script, and no external <script> tag.
+
+
+--- Privacy policy URL -----------------------------------------------
+
+https://github.com/tomekklas/console-hopper-creds/blob/main/PRIVACY.md
+
+
+--- Official / Homepage URL ------------------------------------------
+
+https://github.com/tomekklas/console-hopper-creds
+
+
+--- Support URL ------------------------------------------------------
+
+https://github.com/tomekklas/console-hopper-creds/issues
+
+
+--- Data usage disclosure (Yes/No answers) ---------------------------
+
+Personally identifiable information .... No
+Health information ..................... No
+Financial and payment information ...... No
+Authentication information ............. Yes
+Personal communications ................ No
+Location ............................... No
+Web history ............................ No
+User activity .......................... No
+Website content ........................ No
+
+Authentication information = YES. Tick only this box. The form has no
+text field for it, so the reason is spelled out where reviewers and
+users read: PRIVACY.md ("What it reads", "What it sends, and to whom"),
+the host permission justification above, and the PRIVACY paragraph of
+detailed-description.txt. In short: when the user clicks Keys, the
+sign-in page's own SAML response is sent, with the chosen role, to AWS
+Security Token Service, which answers with temporary credentials shown
+to the user in a dialog. Never stored, never logged, never sent
+anywhere but AWS. No passwords or MFA codes are ever seen. Website
+content stays No: account and role names are read on-device only, to
+label the buttons and the dialog, and never transmitted.
+
+Tick all three certifications:
+- I do not sell or transfer user data to third parties, outside of the approved use cases.
+- I do not use or transfer user data for purposes that are unrelated to my item's single purpose.
+- I do not use or transfer user data to determine creditworthiness or for lending purposes.
+
+
+--- Screenshots (1280x800, in this folder) ---------------------------
+
+NOT YET SHOT — see README.md in this folder for how, and what must never
+appear in them (real account ids, real key ids, third-party brand
+names). At least one is required; the planned set:
+
+screenshot-1-picker.png ... Role picker with Console Hopper — Keys on every row, Keys for all roles in the right column
+screenshot-2-keys.png ..... The Keys dialog — shells, profile block, masked values (staged values only)
+screenshot-3-all.png ...... Keys for all roles — the table and the bulk export select (staged values only)
+screenshot-4-plain.png .... AWS's plain picker without Console Hopper — Keys beside each role
+screenshot-5-settings.png . Creds Settings — session length, pattern, region, templates
+
+
+--- Distribution -----------------------------------------------------
+
+Visibility ....... Public
+Pricing .......... Free
+Regions .......... All regions
+Mature content ... No

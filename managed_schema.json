@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "title": "Allow Console Hopper Creds to run",
+      "description": "Set to false by Chrome enterprise policy to switch the extension off on managed browsers, even when it is installed. It then adds nothing to the AWS sign-in page and never contacts AWS STS.",
+      "type": "boolean"
+    }
+  }
+}

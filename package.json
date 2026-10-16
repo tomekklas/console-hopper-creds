@@ -1,0 +1,32 @@
+{
+  "name": "console-hopper-creds",
+  "version": "0.1.0",
+  "description": "Chrome extension: turn an AWS SAML sign-in into temporary CLI credentials, one role or all of them, in every format. Companion to Console Hopper.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/tomekklas/console-hopper-creds",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tomekklas/console-hopper-creds.git"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "icons": "python3 scripts/make-icons.py",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "format": "prettier --write \"src/**/*.js\" \"scripts/**/*.{js,mjs}\" \"test/**/*.{js,mjs}\"",
+    "format:check": "prettier --check \"src/**/*.js\" \"scripts/**/*.{js,mjs}\" \"test/**/*.{js,mjs}\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "esbuild": "^0.28.0",
+    "eslint": "^9.13.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.11.0",
+    "jsdom": "^29.1.1",
+    "prettier": "^3.3.3",
+    "vitest": "^4.1.8"
+  }
+}

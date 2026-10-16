@@ -1,0 +1,17 @@
+# build artifacts
+*.pem
+*.crx
+*.zip
+dist/
+
+# node tooling
+node_modules/
+
+# editor / OS dross
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# screenshot pipeline scratch output
+store-assets/shots/raw.png

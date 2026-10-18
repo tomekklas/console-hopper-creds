@@ -236,7 +236,7 @@ describe("with Console Hopper on the page", () => {
     expect(banner.textContent).toMatch(/identity provider/);
     const again = banner.querySelector(".chc_banner_action");
     expect(again.getAttribute("href")).toBe("https://idp.example.com");
-    expect(again.textContent).toBe("Sign in again at idp.example.com");
+    expect(again.textContent).toBe("Sign in again");
 
     rowKeys[0].click();
     all.click();

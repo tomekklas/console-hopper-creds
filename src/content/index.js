@@ -302,7 +302,7 @@ export function idpOriginFrom(referrer) {
         const again = document.createElement("a");
         again.className = "chc_banner_action";
         again.href = idpOrigin;
-        again.textContent = `Sign in again at ${new URL(idpOrigin).host}`;
+        again.textContent = "Sign in again";
         banner.appendChild(again);
       }
       const x = document.createElement("button");

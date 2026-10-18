@@ -15,3 +15,4 @@ Thumbs.db
 
 # screenshot pipeline scratch output
 store-assets/shots/raw.png
+store-assets/shots/last-run.log

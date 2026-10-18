@@ -9,7 +9,7 @@ where it comes from.
 | Icon 128×128 | in the zip (`icons/icon128.png`) |
 | Every text field | `submission-<version>.txt` (paste-ready, one block per field) |
 | Detailed description | `detailed-description.txt` (paste whole) |
-| Screenshots, 1280×800, 1–5 | `screenshot-*.png` in this folder — **not shot yet** |
+| Screenshots, 1280×800, 1–5 | `screenshot-*.png` in this folder (four; list and order in `submission-0.1.0.txt`), made with `shots/` |
 | Small promo tile 440×280 | optional, not made |
 
 ## Before every submission

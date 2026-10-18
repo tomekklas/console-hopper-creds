@@ -102,15 +102,20 @@ Tick all three certifications:
 
 --- Screenshots (1280x800, in this folder) ---------------------------
 
-NOT YET SHOT — see README.md in this folder for how, and what must never
-appear in them (real account ids, real key ids, third-party brand
-names). At least one is required; the planned set:
+Upload these four, in this order. All are 1280x800 PNG, shot from the
+live picker with every value staged: AWS documentation placeholder
+account ids (111122223333 …) and access key id (ASIAIOSFODNN7EXAMPLE),
+acme-/globex-/initech- account names, generic roles, session name
+alice@example.com, secrets masked, the "More formats" chips (product
+names) left out. How they were made: shots/README.md.
 
 screenshot-1-picker.png ... Role picker with Console Hopper — Keys on every row, Keys for all roles in the right column
-screenshot-2-keys.png ..... The Keys dialog — shells, profile block, masked values (staged values only)
-screenshot-3-all.png ...... Keys for all roles — the table and the bulk export select (staged values only)
-screenshot-4-plain.png .... AWS's plain picker without Console Hopper — Keys beside each role
-screenshot-5-settings.png . Creds Settings — session length, pattern, region, templates
+screenshot-2-keys.png ..... The Keys dialog — shells, profile block, masked values
+screenshot-3-all.png ...... Keys for all roles — the table and the bulk export select
+screenshot-5-settings.png . Creds Settings — session length, pattern, region, a template
+
+Not shot: AWS's plain picker without Console Hopper (planned as
+screenshot-4-plain.png); optional, the store needs at least one.
 
 
 --- Distribution -----------------------------------------------------

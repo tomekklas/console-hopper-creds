@@ -28,5 +28,20 @@ First build.
   toggle; copy buttons; credentials-file download.
 - All roles: a table with per-role status, bulk export as a credentials
   file, config file, env blocks or any format.
-- Buttons go dark once AWS would no longer accept the sign-in.
+- Buttons go dark once AWS would no longer accept the sign-in: 4.5 minutes
+  after the response's `IssueInstant` (as in Console Hopper), or its
+  `NotOnOrAfter` if that is sooner. STS refuses a response older than five
+  minutes even when the IdP stamps `NotOnOrAfter` later, as mock-saml does
+  at ten.
+- `ExpiredTokenException` ("Token must be redeemed within 5 minutes of
+  issuance") reads as a sign-in that is too old, with a prompt to sign in
+  again. When every role in **Keys for all roles** fails for the same
+  reason, the dialog says it once above the table instead of on each row.
+- Once the sign-in is too old, the note under **Keys for all roles** turns
+  red and says what to do: sign in to AWS again through the identity
+  provider, then click Keys. The buttons' tooltip says the same and adds
+  that open console sessions are not affected.
+- The Keys buttons in Console Hopper's rows show the same cursor as the
+  one in its right column: a hand while they work, "not allowed" once the
+  sign-in is too old, over the icon and label too.
 - `enabled: false` by Chrome managed policy switches the extension off.

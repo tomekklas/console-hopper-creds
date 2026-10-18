@@ -10,9 +10,17 @@ export const BUTTON_CSS = `
   font: 500 13px/1 system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   white-space: nowrap; cursor: pointer; text-decoration: none; vertical-align: middle;
 }
-.chc_btn:hover { background: #f6e9d2; color: #6b3f0c; }
+.chc_btn:not([disabled]):hover { background: #f6e9d2; color: #6b3f0c; }
 .chc_btn:focus-visible { outline: 2px solid #b5701c; outline-offset: 1px; }
 .chc_btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+/* The cursor over the whole button, icon and label too. Console Hopper sets
+   an arrow on everything in a row's button cell and a hand on its buttons,
+   both !important, so inside a row these rules need to outrank that. */
+.chc_btn *, .chc_btn[disabled] * { cursor: inherit; }
+.saml-role .tm_role_buttons .chc_btn,
+.saml-role .tm_role_buttons .chc_btn * { cursor: pointer !important; }
+.saml-role .tm_role_buttons .chc_btn[disabled],
+.saml-role .tm_role_buttons .chc_btn[disabled] * { cursor: not-allowed !important; }
 .chc_btn svg, .chc_spacer svg { flex: none; }
 /* A Keys-sized blank beside each Jump button, so every row's last cell is
    the same width and Sign In lines up with Jump (see placeJumpSpacers). */
@@ -31,8 +39,10 @@ body.tm_theme_dark .chc_menu_action { background: #3a2d18; border-color: #8a6a3a
 body.tm_theme_dark .chc_menu_action:hover { background: #4a3a1f; color: #f0b85c; }
 #chc_toolbar_plain { display: inline-flex; align-items: center; gap: 10px; margin-left: 12px; font-size: 12px; color: #555; }
 .chc_toolbar_note { display: block; margin-top: 4px; font-size: 11px; color: #6c757d; text-align: center; }
+.chc_toolbar_note.chc_note_expired { color: #a7352c; font-weight: 500; line-height: 1.35; }
+body.tm_theme_dark .chc_toolbar_note.chc_note_expired { color: #f19a90; }
 body.tm_theme_dark .chc_btn { background: #3a2d18; border-color: #8a6a3a; color: #e0a24a; }
-body.tm_theme_dark .chc_btn:hover { background: #4a3a1f; color: #f0b85c; }
+body.tm_theme_dark .chc_btn:not([disabled]):hover { background: #4a3a1f; color: #f0b85c; }
 `;
 
 export const DIALOG_CSS = `

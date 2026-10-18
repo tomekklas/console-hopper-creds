@@ -7,6 +7,7 @@ import {
   parseStsResponse,
   isDurationError,
   explainStsError,
+  isExpiredError,
   assumeRoleWithSaml,
   assumeMany,
 } from "../src/shared/sts.js";
@@ -121,6 +122,30 @@ describe("parseStsResponse", () => {
     expect(explainStsError({ ok: false, code: "Weird", message: "m" })).toBe(
       "Weird: m"
     );
+  });
+  it("treats a sign-in past STS's 5 minutes as expired", () => {
+    const stale = parseStsResponse(
+      ERR_XML(
+        "ExpiredTokenException",
+        "Token must be redeemed within 5 minutes of issuance"
+      ),
+      400
+    );
+    expect(stale.code).toBe("ExpiredTokenException");
+    expect(isExpiredError(stale)).toBe(true);
+    expect(explainStsError(stale)).toMatch(/Sign in again/);
+    // The message alone is enough, whatever the code.
+    expect(
+      explainStsError({
+        ok: false,
+        code: "ValidationError",
+        message: "Token must be redeemed within 5 minutes of issuance",
+      })
+    ).toMatch(/Sign in again/);
+    expect(
+      isExpiredError({ ok: false, code: "AccessDenied", message: "x" })
+    ).toBe(false);
+    expect(isExpiredError({ ok: true })).toBe(false);
   });
 });
 

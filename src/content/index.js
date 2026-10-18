@@ -224,7 +224,7 @@ export function parseAccountText(text) {
   const refreshState = () => {
     const dead = expired();
     const tip = dead
-      ? "This sign-in is older than AWS accepts for new keys. Sign in again at your identity provider."
+      ? "AWS hands out keys only for the first few minutes after you sign in, and this sign-in is older. Sign in to AWS again through your identity provider (the way you reached this page), then click Keys. Console sessions you already have open are not affected."
       : `Exchange this sign-in for temporary keys · sign-in valid for ${remaining() || "a few minutes"}`;
     for (const b of buttons) {
       b.disabled = dead;
@@ -244,10 +244,12 @@ export function parseAccountText(text) {
           ? `Keys to the ${shown} roles your filters show, in one go · sign-in valid for ${remaining() || "a few minutes"}`
           : `Keys to every role listed here, in one go · sign-in valid for ${remaining() || "a few minutes"}`;
     }
-    if (note)
+    if (note) {
       note.textContent = dead
-        ? "sign-in too old for new keys"
+        ? "Sign-in expired for new keys. Sign in to AWS again through your identity provider, then click Keys."
         : `${filtered ? `${shown} of ${total}` : total} roles · sign-in valid ${remaining() || "a few minutes"}`;
+      note.classList.toggle("chc_note_expired", dead);
+    }
   };
 
   // Two pickers, two placements:

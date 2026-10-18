@@ -17,7 +17,9 @@ const xml = `<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" 
 </saml:AttributeStatement></saml:Assertion></samlp:Response>`;
 const b64 = btoa(unescape(encodeURIComponent(xml)));
 
-const chromeDouble = () => {
+const chromeDouble = (
+  resultFor = () => ({ ok: false, code: "AccessDenied", message: "test" })
+) => {
   const sent = [];
   globalThis.chrome = {
     storage: {
@@ -29,11 +31,7 @@ const chromeDouble = () => {
         sent.push(msg);
         return {
           ok: true,
-          results: msg.roles.map(() => ({
-            ok: false,
-            code: "AccessDenied",
-            message: "test",
-          })),
+          results: msg.roles.map(resultFor),
         };
       }),
     },
@@ -195,6 +193,53 @@ describe("with Console Hopper on the page", () => {
     expect(all.disabled).toBe(true);
   });
 
+  it("tells the person to sign in again once the sign-in is too old", async () => {
+    const sent = chromeDouble();
+    hopperPicker();
+    // Issued six minutes ago: past the 4.5 minutes STS is trusted for.
+    const old = new Date(Date.now() - 6 * 60 * 1000).toISOString();
+    document.querySelector('input[name="SAMLResponse"]').value = btoa(
+      unescape(
+        encodeURIComponent(
+          xml.replace(/IssueInstant="[^"]+"/, `IssueInstant="${old}"`)
+        )
+      )
+    );
+    await import("../src/content/index.js");
+    await flush();
+
+    const rowKeys = [...document.querySelectorAll(".tm_role_buttons .chc_btn")];
+    const all = document.querySelector("#chc_toolbar .chc_btn");
+    expect(rowKeys).toHaveLength(2);
+    for (const b of [...rowKeys, all]) {
+      expect(b.disabled).toBe(true);
+      expect(b.title).toMatch(
+        /Sign in to AWS again through your identity provider/
+      );
+    }
+    const note = document.querySelector("#chc_toolbar .chc_toolbar_note");
+    expect(note.textContent).toMatch(/Sign in to AWS again/);
+    expect(note.classList.contains("chc_note_expired")).toBe(true);
+
+    rowKeys[0].click();
+    all.click();
+    await flush();
+    expect(sent).toHaveLength(0);
+    expect(document.querySelector('[data-chc="dialog"]')).toBeNull();
+  });
+
+  it("keeps its own cursor inside Console Hopper's rows", async () => {
+    const { BUTTON_CSS } = await import("../src/content/styles.js");
+    // Console Hopper forces an arrow on everything in a row's button cell and
+    // a hand on its buttons, both !important; these must outrank that.
+    expect(BUTTON_CSS).toContain(
+      ".saml-role .tm_role_buttons .chc_btn[disabled] * { cursor: not-allowed !important; }"
+    );
+    expect(BUTTON_CSS).toMatch(
+      /\.saml-role \.tm_role_buttons \.chc_btn \* \{ cursor: pointer !important; \}/
+    );
+  });
+
   it("adds a Creds section to the side menu that opens the settings panel", async () => {
     chromeDouble();
     hopperPicker();
@@ -233,6 +278,76 @@ describe("with Console Hopper on the page", () => {
     expect(document.querySelectorAll(".chc_row_actions .chc_btn")).toHaveLength(
       2
     );
+  });
+});
+
+// The dialog's shadow root is closed; open it for the test so its text can
+// be read.
+const withOpenShadow = async (fn) => {
+  const attach = Element.prototype.attachShadow;
+  Element.prototype.attachShadow = function (init) {
+    return attach.call(this, { ...init, mode: "open" });
+  };
+  try {
+    await fn();
+  } finally {
+    Element.prototype.attachShadow = attach;
+  }
+};
+
+const STALE = {
+  ok: false,
+  code: "ExpiredTokenException",
+  message: "Token must be redeemed within 5 minutes of issuance",
+};
+
+describe("keys for all roles, every call failed", () => {
+  it("says once above the table that the sign-in is too old", async () => {
+    chromeDouble(() => STALE);
+    hopperPicker();
+    await withOpenShadow(async () => {
+      await import("../src/content/index.js");
+      await flush();
+      await flush();
+      document.querySelector("#chc_toolbar .chc_btn").click();
+      await flush();
+      await flush();
+      const dialog = document.querySelector('[data-chc="dialog"]');
+      expect(dialog.getAttribute("data-chc-state")).toBe("ok=0 fail=2");
+      const root = dialog.shadowRoot;
+      const notes = root.querySelectorAll("[data-chc-shared-error]");
+      expect(notes).toHaveLength(1);
+      expect(notes[0].textContent).toMatch(/Sign in again/);
+      // Above the table, and not repeated on the rows.
+      expect(notes[0].nextElementSibling.className).toBe("tablewrap");
+      const rows = root.querySelectorAll("tbody tr");
+      expect(rows).toHaveLength(2);
+      for (const row of rows) {
+        expect(row.textContent).toContain("ExpiredTokenException");
+        expect(row.textContent).not.toMatch(/Sign in again/);
+      }
+    });
+  });
+
+  it("keeps the reasons on the rows when they differ", async () => {
+    let n = 0;
+    chromeDouble(() =>
+      n++ === 0 ? STALE : { ok: false, code: "AccessDenied", message: "x" }
+    );
+    hopperPicker();
+    await withOpenShadow(async () => {
+      await import("../src/content/index.js");
+      await flush();
+      await flush();
+      document.querySelector("#chc_toolbar .chc_btn").click();
+      await flush();
+      await flush();
+      const root = document.querySelector('[data-chc="dialog"]').shadowRoot;
+      expect(root.querySelector("[data-chc-shared-error]")).toBeNull();
+      const rows = [...root.querySelectorAll("tbody tr")];
+      expect(rows[0].textContent).toMatch(/Sign in again/);
+      expect(rows[1].textContent).toMatch(/trust policy/);
+    });
   });
 });
 

@@ -125,12 +125,25 @@ export function isDurationError(err) {
   return /DurationSeconds|MaxSessionDuration/i.test(String(err.message || ""));
 }
 
+// True when AWS refused the sign-in for its age: "ExpiredTokenException:
+// Token must be redeemed within 5 minutes of issuance", or the older code.
+export function isExpiredError(err) {
+  if (!err || err.ok) return false;
+  const code = String(err.code || "");
+  const msg = String(err.message || "");
+  return (
+    code === "ExpiredToken" ||
+    code === "ExpiredTokenException" ||
+    /expired|redeemed within/i.test(msg)
+  );
+}
+
 // What a person should read for each STS error code.
 export function explainStsError(err) {
   if (!err) return "";
   const code = String(err.code || "");
   const msg = String(err.message || "");
-  if (code === "ExpiredToken" || /expired/i.test(msg)) {
+  if (isExpiredError(err)) {
     return "AWS no longer accepts this sign-in. Sign in again at your identity provider and try once more.";
   }
   if (code === "AccessDenied") {

@@ -282,6 +282,15 @@ export function openDialog(opts) {
     const okRows = rows.filter((r) => r.result.ok);
     const shortenedN = okRows.filter((r) => r.result.shortened).length;
     const failedN = rows.length - okRows.length;
+    // Every call failed for one reason (most often a sign-in too old for
+    // STS): say it once above the table, not on each of the rows.
+    const reasons = new Set(
+      rows.filter((r) => !r.result.ok).map((r) => explainStsError(r.result))
+    );
+    const shared =
+      rows.length > 1 && !okRows.length && reasons.size === 1
+        ? [...reasons][0]
+        : "";
     const body = rows
       .map((r, i) => {
         const { item, result } = r;
@@ -294,7 +303,9 @@ export function openDialog(opts) {
           ? `<button type="button" class="mini ${state.copied === `env:${i}` ? "done" : ""}" data-copy="env:${i}">${state.copied === `env:${i}` ? "Copied" : "env"}</button>` +
             `<button type="button" class="mini ${state.copied === `profile:${i}` ? "done" : ""}" data-copy="profile:${i}">${state.copied === `profile:${i}` ? "Copied" : "profile"}</button>` +
             `<button type="button" class="mini" data-open="${i}">all…</button>`
-          : `<span class="sub">${h(explainStsError(result))}</span>`;
+          : shared
+            ? ""
+            : `<span class="sub">${h(explainStsError(result))}</span>`;
         const profile = result.ok ? r.ctx.profileName : "";
         return `<tr>
           <td class="stripe"><i style="background:${h(item.stripe || "#c7ccd1")}"></i></td>
@@ -337,6 +348,7 @@ export function openDialog(opts) {
           <button type="button" class="x" data-act="close" aria-label="Close">×</button>
         </div>
         <div class="body">
+          ${shared ? `<div class="err" data-chc-shared-error>${h(shared)}</div>` : ""}
           <div class="tablewrap"><table>
             <colgroup><col style="width:6px"><col><col style="width:118px"><col style="width:120px"><col style="width:150px"><col style="width:120px"><col><col style="width:216px"></colgroup>
             <thead><tr><th></th><th>Account</th><th>ID</th><th>Role</th><th>Status</th><th>Expires</th><th>Profile name</th><th>Copy</th></tr></thead>

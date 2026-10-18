@@ -196,6 +196,10 @@ describe("with Console Hopper on the page", () => {
   it("tells the person to sign in again once the sign-in is too old", async () => {
     const sent = chromeDouble();
     hopperPicker();
+    Object.defineProperty(document, "referrer", {
+      value: "https://idp.example.com/app/aws/sso?x=1",
+      configurable: true,
+    });
     // Issued six minutes ago: past the 4.5 minutes STS is trusted for.
     const old = new Date(Date.now() - 6 * 60 * 1000).toISOString();
     document.querySelector('input[name="SAMLResponse"]').value = btoa(
@@ -218,14 +222,42 @@ describe("with Console Hopper on the page", () => {
       );
     }
     const note = document.querySelector("#chc_toolbar .chc_toolbar_note");
-    expect(note.textContent).toMatch(/Sign in to AWS again/);
+    expect(note.textContent).toMatch(/Sign-in expired/);
     expect(note.classList.contains("chc_note_expired")).toBe(true);
+
+    // A banner across the top of the page says so, and links back to the
+    // identity provider the person came from.
+    const banner = document.getElementById("chc_expired_banner");
+    expect(banner).not.toBeNull();
+    expect(banner.hidden).toBe(false);
+    expect(document.body.firstElementChild).toBe(banner);
+    expect(banner.getAttribute("role")).toBe("alert");
+    expect(banner.textContent).toMatch(/This sign-in has expired/);
+    expect(banner.textContent).toMatch(/identity provider/);
+    const again = banner.querySelector(".chc_banner_action");
+    expect(again.getAttribute("href")).toBe("https://idp.example.com");
+    expect(again.textContent).toBe("Sign in again at idp.example.com");
 
     rowKeys[0].click();
     all.click();
     await flush();
     expect(sent).toHaveLength(0);
     expect(document.querySelector('[data-chc="dialog"]')).toBeNull();
+
+    // Hidden on request, and it stays hidden as the clock ticks on.
+    banner.querySelector(".chc_banner_x").click();
+    expect(banner.hidden).toBe(true);
+    await new Promise((r) => setTimeout(r, 1100));
+    expect(banner.hidden).toBe(true);
+  });
+
+  it("shows no banner while the sign-in is fresh", async () => {
+    chromeDouble();
+    hopperPicker();
+    await import("../src/content/index.js");
+    await flush();
+    const banner = document.getElementById("chc_expired_banner");
+    expect(banner === null || banner.hidden).toBe(true);
   });
 
   it("keeps its own cursor inside Console Hopper's rows", async () => {
@@ -390,5 +422,32 @@ describe("guards", () => {
     await flush();
     await flush();
     expect(document.querySelector(".chc_btn")).toBeNull();
+  });
+});
+
+describe("idpOriginFrom", () => {
+  it("keeps only an identity provider's origin", async () => {
+    chromeDouble();
+    const { idpOriginFrom } = await import("../src/content/index.js");
+    expect(
+      idpOriginFrom("https://acme.okta.com/home/aws/123?fromHome=true")
+    ).toBe("https://acme.okta.com");
+    expect(idpOriginFrom("http://localhost:4000/")).toBe(
+      "http://localhost:4000"
+    );
+  });
+
+  it("offers nothing for AWS's own pages, other schemes or no referrer", async () => {
+    chromeDouble();
+    const { idpOriginFrom } = await import("../src/content/index.js");
+    expect(idpOriginFrom("")).toBe("");
+    expect(idpOriginFrom("not a url")).toBe("");
+    expect(idpOriginFrom("https://signin.aws.amazon.com/saml")).toBe("");
+    expect(idpOriginFrom("https://eu-west-1.signin.aws.amazon.com/saml")).toBe(
+      ""
+    );
+    expect(idpOriginFrom("https://console.amazonaws.cn/")).toBe("");
+    expect(idpOriginFrom("javascript:alert(1)")).toBe("");
+    expect(idpOriginFrom("file:///tmp/x.html")).toBe("");
   });
 });

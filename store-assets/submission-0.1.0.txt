@@ -42,9 +42,9 @@ Persists the user's settings in chrome.storage.sync: the session length to ask A
 (The dashboard asks for a host permission justification because of the
 content script's match patterns; there is no other host permission.)
 
---- Host permission justification (max 1000 chars; this is 847) --------
+--- Host permission justification (max 1000 chars; this is 957) --------
 
-The content script runs only on https://signin.aws.amazon.com/saml and https://*.signin.aws.amazon.com/saml, AWS's SAML role picker. There it reads the page's own SAMLResponse form field to list the roles the identity provider granted, places a Keys button beside each role and a Keys for all roles button, and shows the credentials dialog when the user clicks one. No other page is touched and page content is never transmitted anywhere but to AWS: when the user clicks Keys, the SAML response and the chosen role ARN go to AWS Security Token Service (sts.<region>.amazonaws.com, or the GovCloud / China equivalent) in an AssumeRoleWithSAML request made by the service worker. That endpoint permits any origin, so no host permission for it is declared. The extension makes no other network requests, and none to servers controlled by its authors.
+The content script runs only on https://signin.aws.amazon.com/saml and https://*.signin.aws.amazon.com/saml, AWS's SAML role picker. There it reads the page's own SAMLResponse form field to list the roles the identity provider granted, and the page's referrer (its origin only) to link back to the identity provider once the sign-in has expired, places a Keys button beside each role and a Keys for all roles button, and shows the credentials dialog when the user clicks one. No other page is touched and page content is never transmitted anywhere but to AWS: when the user clicks Keys, the SAML response and the chosen role ARN go to AWS Security Token Service (sts.<region>.amazonaws.com, or the GovCloud / China equivalent) in an AssumeRoleWithSAML request made by the service worker. That endpoint permits any origin, so no host permission for it is declared. The extension makes no other network requests, and none to servers controlled by its authors.
 
 
 --- Are you using remote code? --------------------------------------

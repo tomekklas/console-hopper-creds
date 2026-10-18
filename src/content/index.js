@@ -55,6 +55,22 @@ export function parseAccountText(text) {
   return { name: t, id: id ? id[1] : "" };
 }
 
+// The identity provider's origin from the page's referrer: http(s) only,
+// never AWS's own hosts (a reload or AWS's own redirect), and only the
+// origin. "" when there is none to offer.
+export function idpOriginFrom(referrer) {
+  let u;
+  try {
+    u = new URL(String(referrer || ""));
+  } catch (e) {
+    return "";
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return "";
+  if (/(^|\.)(amazon\.com|amazonaws\.com|amazonaws\.cn)$/i.test(u.hostname))
+    return "";
+  return u.origin;
+}
+
 (async function main() {
   if (!(await isEnabledByPolicy())) return;
   if (document.documentElement.hasAttribute("data-chc-loaded")) return;
@@ -215,6 +231,12 @@ export function parseAccountText(text) {
   let allButton = null;
   let note = null;
 
+  // Where the person came from: the identity provider posted the SAML
+  // response here, so the page's referrer is (at least) its origin. Only the
+  // origin is kept, to offer a link back once this sign-in is too old. Read
+  // locally, never stored or sent.
+  const idpOrigin = idpOriginFrom(document.referrer);
+
   const expired = () => until !== null && Date.now() >= until;
   const remaining = () => {
     if (until === null) return "";
@@ -224,7 +246,7 @@ export function parseAccountText(text) {
   const refreshState = () => {
     const dead = expired();
     const tip = dead
-      ? "AWS hands out keys only for the first few minutes after you sign in, and this sign-in is older. Sign in to AWS again through your identity provider (the way you reached this page), then click Keys. Console sessions you already have open are not affected."
+      ? "This sign-in has expired: AWS accepts it for about 5 minutes. Sign in to AWS again through your identity provider for new keys."
       : `Exchange this sign-in for temporary keys · sign-in valid for ${remaining() || "a few minutes"}`;
     for (const b of buttons) {
       b.disabled = dead;
@@ -246,10 +268,58 @@ export function parseAccountText(text) {
     }
     if (note) {
       note.textContent = dead
-        ? "Sign-in expired for new keys. Sign in to AWS again through your identity provider, then click Keys."
+        ? "Sign-in expired · sign in again for new keys"
         : `${filtered ? `${shown} of ${total}` : total} roles · sign-in valid ${remaining() || "a few minutes"}`;
       note.classList.toggle("chc_note_expired", dead);
     }
+    showExpiredBanner(dead);
+  };
+
+  // Once the sign-in is too old the page can no longer issue keys or start a
+  // console session, so say so across the top of the page, not only in the
+  // small note under one button. Dismissable; it stays dismissed.
+  let banner = null;
+  let bannerHidden = false;
+  const showExpiredBanner = (dead) => {
+    if (!dead || bannerHidden) {
+      if (banner) banner.hidden = true;
+      return;
+    }
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "chc_expired_banner";
+      banner.setAttribute("role", "alert");
+      const text = document.createElement("div");
+      text.className = "chc_banner_text";
+      const title = document.createElement("strong");
+      title.textContent = "This sign-in has expired.";
+      const body = document.createElement("span");
+      body.textContent =
+        " AWS accepts a sign-in page for about 5 minutes, so Keys and new sign-ins from this page will fail. Sign in to AWS again through your identity provider.";
+      text.append(title, body);
+      banner.appendChild(text);
+      if (idpOrigin) {
+        const again = document.createElement("a");
+        again.className = "chc_banner_action";
+        again.href = idpOrigin;
+        again.textContent = `Sign in again at ${new URL(idpOrigin).host}`;
+        banner.appendChild(again);
+      }
+      const x = document.createElement("button");
+      x.type = "button";
+      x.className = "chc_banner_x";
+      x.setAttribute("aria-label", "Hide this message");
+      x.title = "Hide this message";
+      x.textContent = "×";
+      x.addEventListener("click", (e) => {
+        e.preventDefault();
+        bannerHidden = true;
+        banner.hidden = true;
+      });
+      banner.appendChild(x);
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+    banner.hidden = false;
   };
 
   // Two pickers, two placements:

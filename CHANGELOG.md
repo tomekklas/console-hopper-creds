@@ -37,10 +37,12 @@ First build.
   issuance") reads as a sign-in that is too old, with a prompt to sign in
   again. When every role in **Keys for all roles** fails for the same
   reason, the dialog says it once above the table instead of on each row.
-- Once the sign-in is too old, the note under **Keys for all roles** turns
-  red and says what to do: sign in to AWS again through the identity
-  provider, then click Keys. The buttons' tooltip says the same and adds
-  that open console sessions are not affected.
+- Once the sign-in is too old, a banner across the top of the page says
+  so: neither Keys nor a new sign-in from that page will work, and the way
+  out is to sign in again through the identity provider. When the page's
+  referrer names the identity provider, the banner links back to it
+  (origin only; never stored or sent). The banner can be hidden; the note
+  under **Keys for all roles** turns red and short.
 - The Keys buttons in Console Hopper's rows show the same cursor as the
   one in its right column: a hand while they work, "not allowed" once the
   sign-in is too old, over the icon and label too.

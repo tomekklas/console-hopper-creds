@@ -14,7 +14,7 @@ Session length (follow what your identity provider asks for, or a fixed 15 minut
 
 PRIVACY
 
-The extension runs only on the AWS SAML sign-in page. When you click Keys it reads the page's own SAML response and sends it, with the role you chose, to AWS's token service, which answers with temporary credentials. Those are shown to you and exist only while the dialog is open. Nothing is stored, logged, or sent anywhere but AWS. There is no server, no telemetry, no analytics. Settings are kept in Chrome's extension storage. No host permissions are requested beyond the sign-in page itself.
+The extension runs only on the AWS SAML sign-in page. When you click Keys it reads the page's own SAML response and sends it, with the role you chose, to AWS's token service, which answers with temporary credentials. Those are shown to you and exist only while the dialog is open. Once a sign-in is too old for new keys, it also reads the address of the identity provider you came from, to offer a link back; that address stays on your computer. Nothing is stored, logged, or sent anywhere but AWS. There is no server, no telemetry, no analytics. Settings are kept in Chrome's extension storage. No host permissions are requested beyond the sign-in page itself.
 
 FOR ADMINISTRATORS
 

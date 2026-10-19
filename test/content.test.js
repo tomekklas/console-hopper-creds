@@ -113,6 +113,7 @@ beforeEach(() => {
     "data-console-hopper-signin-expired",
   ].forEach((a) => document.documentElement.removeAttribute(a));
   document.getElementById("chc_requirement")?.remove();
+  document.body.className = "";
   document.querySelectorAll("style").forEach((s) => s.remove());
 });
 
@@ -388,6 +389,66 @@ describe("keys for all roles, every call failed", () => {
       const rows = [...root.querySelectorAll("tbody tr")];
       expect(rows[0].textContent).toMatch(/Sign in again/);
       expect(rows[1].textContent).toMatch(/trust policy/);
+    });
+  });
+});
+
+// Console Hopper's theme switch (tm_theme_dark on <body>) picks the
+// dialog's theme; the operating system's setting does not.
+describe("the Keys dialog's theme", () => {
+  const openKeys = async (selector) => {
+    await import("../src/content/index.js");
+    await flush();
+    await flush();
+    document.querySelector(selector).click();
+    await flush();
+    await flush();
+    return document.querySelector('[data-chc="dialog"]').shadowRoot;
+  };
+  const isDark = (root) =>
+    root.querySelector(".scrim").classList.contains("dark");
+
+  it("is light on a light Console Hopper", async () => {
+    chromeDouble(() => STALE);
+    hopperPicker();
+    await withOpenShadow(async () => {
+      const root = await openKeys(".chc_row_actions .chc_btn");
+      expect(root.querySelector("h1").textContent).toMatch(/Keys for/);
+      expect(isDark(root)).toBe(false);
+      const css = root.querySelector("style").textContent;
+      expect(css).not.toContain("prefers-color-scheme");
+      expect(css).toContain(":where(.scrim.dark) .box");
+    });
+  });
+
+  it("is dark on a dark Console Hopper, all roles too, and follows the switch", async () => {
+    chromeDouble(() => ({
+      ok: true,
+      credentials: {
+        accessKeyId: "ASIAEXAMPLE",
+        secretAccessKey: "secret",
+        sessionToken: "token",
+        expiration: new Date(Date.now() + 3600e3).toISOString(),
+      },
+      durationSeconds: 3600,
+    }));
+    hopperPicker();
+    document.body.classList.add("tm_theme_dark");
+    await withOpenShadow(async () => {
+      const root = await openKeys("#chc_toolbar .chc_btn");
+      expect(root.querySelector("h1").textContent).toBe("Keys for all roles");
+      expect(isDark(root)).toBe(true);
+      // Switched to light while open, then back.
+      document.body.classList.remove("tm_theme_dark");
+      await flush();
+      expect(isDark(root)).toBe(false);
+      document.body.classList.add("tm_theme_dark");
+      await flush();
+      expect(isDark(root)).toBe(true);
+      // Opening one role redraws the dialog: still dark.
+      root.querySelector('[data-open="0"]').click();
+      expect(root.querySelector("h1").textContent).toMatch(/Keys for acme/);
+      expect(isDark(root)).toBe(true);
     });
   });
 });

@@ -19,6 +19,7 @@ import {
 } from "../shared/formats.js";
 import { explainStsError } from "../shared/sts.js";
 import { DIALOG_CSS } from "./styles.js";
+import { followHopperTheme } from "./theme.js";
 
 const KEY_SVG =
   '<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"></circle><path d="M10.8 12.2 21 2M15 8l3 3M18 5l3 3"></path></svg>';
@@ -119,6 +120,7 @@ export function openDialog(opts) {
   host.setAttribute("data-chc-state", "loading");
   const root = host.attachShadow({ mode: "closed" });
   document.body.appendChild(host);
+  const theme = followHopperTheme(root);
 
   const state = {
     os: settings.os || "sh",
@@ -136,6 +138,7 @@ export function openDialog(opts) {
     if (state.closed) return;
     state.closed = true;
     clearInterval(ticker);
+    theme.stop();
     document.removeEventListener("keydown", onKey, true);
     state.results = null;
     host.remove();
@@ -151,6 +154,7 @@ export function openDialog(opts) {
   const render = () => {
     if (state.closed) return;
     root.innerHTML = `<style>${DIALOG_CSS}</style><div class="scrim" part="scrim">${body()}</div>`;
+    theme.apply();
     wire();
   };
 

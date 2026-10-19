@@ -44,4 +44,8 @@ First build.
 - The Keys buttons in Console Hopper's rows show the same cursor as the
   one in its right column: a hand while they work, "not allowed" once the
   sign-in is too old, over the icon and label too.
+- The Keys dialog, the all-roles dialog and the settings panel follow
+  Console Hopper's own light/dark switch (and a change to it while one is
+  open), not the operating system's: light on a light Console Hopper, dark
+  on a dark one.
 - `enabled: false` by Chrome managed policy switches the extension off.

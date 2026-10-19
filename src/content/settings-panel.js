@@ -5,6 +5,7 @@
 import { TEMPLATE_KEYS } from "../shared/formats.js";
 import { normalizeSettings } from "../shared/settings.js";
 import { DIALOG_CSS, SETTINGS_CSS } from "./styles.js";
+import { followHopperTheme } from "./theme.js";
 
 const h = (s) =>
   String(s === undefined || s === null ? "" : s)
@@ -33,6 +34,7 @@ export function openSettingsPanel({ settings, saveSettings }) {
   host.setAttribute("data-chc", "settings");
   const root = host.attachShadow({ mode: "closed" });
   document.body.appendChild(host);
+  const theme = followHopperTheme(root);
 
   let templates = (settings.templates || []).map((t) => ({ ...t }));
   // What the fields show: the saved values until the person edits them. Kept
@@ -46,6 +48,7 @@ export function openSettingsPanel({ settings, saveSettings }) {
   let status = "";
 
   const close = () => {
+    theme.stop();
     document.removeEventListener("keydown", onKey, true);
     host.remove();
   };
@@ -117,6 +120,7 @@ export function openSettingsPanel({ settings, saveSettings }) {
           </div>
         </div>
       </div>`;
+    theme.apply();
     wire();
   };
 

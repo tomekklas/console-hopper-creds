@@ -107,18 +107,19 @@ td .mini.done { background: #28a745; border-color: #28a745; color: #fff; }
 .tablewrap { overflow: auto; max-height: 60vh; border: 1px solid #e1e4e8; border-radius: 4px; }
 select.sel { height: 30px; padding: 0 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font: 500 13px system-ui, sans-serif; color: #16191f; }
 .gear { font-size: 12px; color: #0073bb; text-decoration: none; }
-@media (prefers-color-scheme: dark) {
-  .box { background: #1f2329; color: #e8e6df; }
-  .head, .foot { border-color: #343a43; } .foot { background: #171a1f; }
-  .pill { background: #1f2329; color: #c9ccd1; border-color: #3d444e; }
-  pre, .val { background: #121419; border-color: #343a43; color: #e8e6df; }
-  .tab, .ghost, .chip, select.sel { background: #2a2f36; border-color: #4a515b; color: #e8e6df; }
-  th { border-color: #343a43; } td { border-color: #2a2f36; } .tablewrap { border-color: #343a43; }
-  .x:hover { background: #2a2f36; color: #fff; }
-  .copy, td .mini { background: #3a2d18; border-color: #8a6a3a; color: #e0a24a; }
-  .sub { color: #a2a8b1; } label.chk { color: #c9ccd1; }
-  .scrim { color: #e8e6df; }
-}
+/* Dark when Console Hopper is dark (see theme.js), whatever the OS says.
+   :where() keeps each rule as specific as it was without the .dark scope,
+   so .tab.on, .pill.ok, .copy.done and the like still win over these. */
+:where(.scrim.dark) .box { background: #1f2329; color: #e8e6df; }
+:where(.scrim.dark) .head, :where(.scrim.dark) .foot { border-color: #343a43; } :where(.scrim.dark) .foot { background: #171a1f; }
+:where(.scrim.dark) .pill { background: #1f2329; color: #c9ccd1; border-color: #3d444e; }
+:where(.scrim.dark) pre, :where(.scrim.dark) .val { background: #121419; border-color: #343a43; color: #e8e6df; }
+:where(.scrim.dark) .tab, :where(.scrim.dark) .ghost, :where(.scrim.dark) .chip, :where(.scrim.dark) select.sel { background: #2a2f36; border-color: #4a515b; color: #e8e6df; }
+:where(.scrim.dark) th { border-color: #343a43; } :where(.scrim.dark) td { border-color: #2a2f36; } :where(.scrim.dark) .tablewrap { border-color: #343a43; }
+:where(.scrim.dark) .x:hover { background: #2a2f36; color: #fff; }
+:where(.scrim.dark) .copy, :where(.scrim.dark) td .mini { background: #3a2d18; border-color: #8a6a3a; color: #e0a24a; }
+:where(.scrim.dark) .sub { color: #a2a8b1; } :where(.scrim.dark) label.chk { color: #c9ccd1; }
+.scrim.dark { color: #e8e6df; }
 `;
 
 // Extra rules for the settings panel (on top of DIALOG_CSS).
@@ -132,8 +133,6 @@ textarea.in { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 
 .tpl .row { flex-wrap: nowrap; }
 .tpl .row .in { flex: 1; }
 .ghost.danger { color: #a7352c; }
-@media (prefers-color-scheme: dark) {
-  .in { background: #121419; border-color: #4a515b; color: #e8e6df; }
-  .tpl { border-top-color: #343a43; }
-}
+:where(.scrim.dark) .in { background: #121419; border-color: #4a515b; color: #e8e6df; }
+:where(.scrim.dark) .tpl { border-top-color: #343a43; }
 `;

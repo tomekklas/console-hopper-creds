@@ -91,40 +91,53 @@ OSA
 )
 geom="${out%%@@*}"
 stage="${out##*@@}"
-echo "stage: $stage"
+# Nothing is printed until after the capture: new output in the terminal
+# running this (Claude's terminal panel) has pulled that app in front of
+# Chrome at the moment of the shot.
 
 rect=$(python3 - "$geom" "$stage" <<'PY'
 import json, sys
 g, s = json.loads(sys.argv[1]), json.loads(sys.argv[2])
 if s.get("pending"):
-    sys.exit("REFUSING: still %s" % s["pending"])
+    sys.exit("stage: %s\nREFUSING: still %s" % (sys.argv[2], s["pending"]))
 if s.get("leaks"):
-    sys.exit("REFUSING: real data still visible: %s" % s["leaks"])
+    sys.exit("stage: %s\nREFUSING: real data still visible: %s" % (sys.argv[2], s["leaks"]))
 if not s.get("framing", {}).get("ok"):
-    sys.exit("REFUSING: framing not ok: %s" % s.get("framing"))
+    sys.exit("stage: %s\nREFUSING: framing not ok: %s" % (sys.argv[2], s.get("framing")))
 shot = s["framing"]["shot"]
 vx, vy = int(g["sx"]), int(g["sy"] + (g["oh"] - g["ih"]))
 print(vx + shot["x"], vy + shot["y"], shot["w"], shot["h"])
 PY
 )
 if [[ "$STAGE_ONLY" == 1 ]]; then
+  echo "stage: $stage"
   echo "staged, not captured (STAGE_ONLY=1)"
   exit 0
 fi
 read -r X Y W H <<<"$rect"
-echo "capture rect: ${X},${Y} ${W}x${H}"
 
 # screencapture grabs whatever is in front. Another app taking focus (the
 # terminal this runs in, a notification) has put the wrong window in a shot,
 # so check that Chrome is the front app right before and right after.
 chrome_front() { [[ "$(osascript -e 'tell application "Google Chrome" to get frontmost')" == true ]]; }
+# Bring Chrome back in front if something took it during staging; a fresh
+# window focus makes Console Hopper focus its search box, so blur it again.
 if ! chrome_front; then
+  osascript -e 'tell application "Google Chrome" to activate' \
+    -e 'delay 0.8' \
+    -e "tell application \"Google Chrome\" to execute (active tab of window id $WIN) javascript \"(function(){var s=document.getElementById('tm_search_input');if(s)s.blur();var r=document.getElementById('tm_role_list');if(r&&r.focus)r.focus();return 1})()\"" \
+    >/dev/null
+  sleep 0.4
+fi
+if ! chrome_front; then
+  echo "stage: $stage"
   echo "REFUSING: Chrome is not the front app; nothing captured" >&2
   exit 1
 fi
 screencapture -x -R"${X},${Y},${W},${H}" "$HERE/raw.png"
 if ! chrome_front; then
   rm -f "$HERE/raw.png"
+  echo "stage: $stage"
   echo "REFUSING: Chrome lost the front during the capture; the image was deleted" >&2
   exit 1
 fi
@@ -134,4 +147,6 @@ cp "$HERE/raw.png" "$OUT"
 if [[ "$(sips -g pixelWidth "$OUT" | awk '/pixelWidth/{print $2}')" == "$((W * 2))" ]]; then
   sips -z "$H" "$W" "$OUT" >/dev/null
 fi
+echo "stage: $stage"
+echo "capture rect: ${X},${Y} ${W}x${H}"
 sips -g pixelWidth -g pixelHeight "$OUT" | tail -2

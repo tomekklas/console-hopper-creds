@@ -23,11 +23,10 @@ server of its own.
   STS). It is never stored.
 - **Account names and role names** shown on the page, to label the
   buttons and the dialog.
-- **Where you came from**: the sign-in page's referrer, cut down to its
-  origin, which is your identity provider's address (for example
-  `https://acme.okta.com`). Once the sign-in is too old for new keys, the
-  extension offers it as a "Sign in again" link at the top of the page.
-  It is never stored or sent anywhere.
+- **Console Hopper's markers** on the page: whether Console Hopper 1.9.0
+  or later is there, and the time it says AWS stops accepting this
+  sign-in, so the Keys buttons can grey out on time. Read on the page
+  only.
 
 ## What it sends, and to whom
 

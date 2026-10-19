@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Console Hopper Creds",
   "version": "0.1.0",
-  "description": "For AWS: turn a SAML sign-in into temporary CLI credentials — one role or all of them — as env vars, a credentials profile, and more. Companion to Console Hopper.",
+  "description": "Temporary AWS CLI keys from a SAML sign-in, one role or all: env vars, a credentials profile and more. Needs Console Hopper 1.9+.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",

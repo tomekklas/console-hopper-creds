@@ -6,17 +6,18 @@
 // roles to the service worker, which calls AWS STS; the credentials come
 // back to a dialog here and nowhere else.
 //
-// Console Hopper, when it is on the page, knows nothing about this add-on
-// and has nothing for it: this script simply adds to the page Console
-// Hopper built (a Keys button inside its Sign In cell, a button in its
-// right-hand column, a Settings entry in its side menu). Without Console
-// Hopper the buttons sit beside AWS's own role labels. The two extensions
-// never talk: they share only the page's DOM.
+// It works on top of Console Hopper 1.9.0 or later, which owns the page:
+// Keys goes into Console Hopper's Sign In cell, "Keys for all roles" into
+// its right-hand column, a Settings entry into its side menu. Console Hopper
+// also owns the sign-in's expiry (the banner, the rule) and publishes it on
+// <html> as data-console-hopper-signin-until / -signin-expired / -expiry-ui;
+// this script reads those to grey out Keys. The two extensions never talk:
+// they share only the page's DOM. Without Console Hopper 1.9.0+ the add-on
+// shows a short notice instead of Keys.
 
 import {
   decodeSamlResponse,
   parseAssertion,
-  validUntil,
   signinRegionFromHost,
   partitionOf,
   accountOf,
@@ -35,40 +36,32 @@ import { openSettingsPanel } from "./settings-panel.js";
 const KEY_SVG =
   '<svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"></circle><path d="M10.8 12.2 21 2M15 8l3 3M18 5l3 3"></path></svg>';
 
-// How long to wait for Console Hopper to show any sign of itself before
-// treating the page as AWS's plain picker, and how long to wait for its rows
-// once it has.
+// How long to wait for Console Hopper to show any sign of itself, and how
+// long to wait for its rows once it has.
 const CH_WAIT_MS = 1500;
 const CH_ROWS_WAIT_MS = 12000;
 
+// Console Hopper's page interface (1.9.0+), on <html>.
+export const CH_EXPIRY_UI_ATTR = "data-console-hopper-expiry-ui";
+export const CH_SIGNIN_UNTIL_ATTR = "data-console-hopper-signin-until";
+export const CH_SIGNIN_EXPIRED_ATTR = "data-console-hopper-signin-expired";
+export const CH_MIN_VERSION = "1.9.0";
+const CH_HOME = "https://consolehopper.com/";
+
 const log = (...a) => console.info("[Console Hopper Creds]", ...a);
 
-// "Account: name (123456789012)" → { name, id }, as AWS's plain picker
-// prints it.
-export function parseAccountText(text) {
-  const t = String(text || "")
-    .replace(/^\s*Account:\s*/i, "")
-    .trim();
-  const m = t.match(/^(.*?)\s*\((\d{12})\)\s*$/);
-  if (m) return { name: m[1].trim(), id: m[2] };
-  const id = t.match(/\b(\d{12})\b/);
-  return { name: t, id: id ? id[1] : "" };
-}
+// Console Hopper 1.9.0 or later marks the page before it builds its rows;
+// earlier versions never set this attribute.
+export const consoleHopperSupported = (root = document.documentElement) =>
+  root.getAttribute(CH_EXPIRY_UI_ATTR) === "1";
 
-// The identity provider's origin from the page's referrer: http(s) only,
-// never AWS's own hosts (a reload or AWS's own redirect), and only the
-// origin. "" when there is none to offer.
-export function idpOriginFrom(referrer) {
-  let u;
-  try {
-    u = new URL(String(referrer || ""));
-  } catch (e) {
-    return "";
-  }
-  if (u.protocol !== "https:" && u.protocol !== "http:") return "";
-  if (/(^|\.)(amazon\.com|amazonaws\.com|amazonaws\.cn)$/i.test(u.hostname))
-    return "";
-  return u.origin;
+// When the sign-in stops being usable, as Console Hopper published it (ms
+// since the epoch), or null when it published none (a response with no
+// times never expires).
+export function consoleHopperSigninUntil(root = document.documentElement) {
+  const v = root.getAttribute(CH_SIGNIN_UNTIL_ATTR);
+  const n = v === null || v === "" ? NaN : Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 (async function main() {
@@ -100,7 +93,6 @@ export function idpOriginFrom(referrer) {
   }
 
   const settings = await loadSettings();
-  const until = validUntil(parsed);
   const partition = partitionOf(parsed.roles[0].roleArn);
   const regionFor = () =>
     settings.region ||
@@ -122,8 +114,8 @@ export function idpOriginFrom(referrer) {
 
   // --- rows -------------------------------------------------------------
 
-  // Every row that is a SAML role: AWS's radio carries the ARN in both the
-  // plain picker and Console Hopper's.
+  // Every role row: AWS's radio, which Console Hopper keeps in each of its
+  // rows, carries the ARN.
   const roleRows = () => {
     const out = [];
     document
@@ -147,25 +139,10 @@ export function idpOriginFrom(referrer) {
   const itemFor = ({ row, pair }) => {
     const roleArn = pair.roleArn;
     const accountId = accountOf(roleArn);
-    let accountName = "";
-    let env = "";
-    let stripe = "";
-    const chName = row.querySelector(".tm_account_name");
-    if (chName) {
-      accountName = (chName.textContent || "").trim();
-      env = row.getAttribute("data-env-id") || "";
-      stripe = row.style.borderLeftColor || "";
-    } else {
-      const acct = row.closest(".saml-account");
-      const nameEl =
-        (acct &&
-          acct.previousElementSibling &&
-          acct.previousElementSibling.querySelector(".saml-account-name")) ||
-        (acct &&
-          acct.parentElement &&
-          acct.parentElement.querySelector(".saml-account-name"));
-      accountName = nameEl ? parseAccountText(nameEl.textContent).name : "";
-    }
+    const nameEl = row.querySelector(".tm_account_name");
+    const accountName = nameEl ? (nameEl.textContent || "").trim() : "";
+    const env = row.getAttribute("data-env-id") || "";
+    const stripe = row.style.borderLeftColor || "";
     return {
       roleArn,
       principalArn: pair.principalArn,
@@ -231,23 +208,19 @@ export function idpOriginFrom(referrer) {
   let allButton = null;
   let note = null;
 
-  // Where the person came from: the identity provider posted the SAML
-  // response here, so the page's referrer is (at least) its origin. Only the
-  // origin is kept, to offer a link back once this sign-in is too old. Read
-  // locally, never stored or sent.
-  const idpOrigin = idpOriginFrom(document.referrer);
-
-  const expired = () => until !== null && Date.now() >= until;
-  const remaining = () => {
-    if (until === null) return "";
-    const s = Math.max(0, Math.floor((until - Date.now()) / 1000));
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  // Console Hopper owns the sign-in's expiry: it decides when AWS stops
+  // accepting this page (and shows the banner); Keys follows it.
+  const root = document.documentElement;
+  const expired = () => {
+    if (root.getAttribute(CH_SIGNIN_EXPIRED_ATTR) === "1") return true;
+    const until = consoleHopperSigninUntil(root);
+    return until !== null && Date.now() >= until;
   };
   const refreshState = () => {
     const dead = expired();
     const tip = dead
-      ? "This sign-in has expired: AWS accepts it for about 5 minutes. Sign in to AWS again through your identity provider for new keys."
-      : `Exchange this sign-in for temporary keys · sign-in valid for ${remaining() || "a few minutes"}`;
+      ? "This sign-in has expired. Sign in to AWS again through your identity provider for new keys."
+      : "Exchange this sign-in for temporary keys";
     for (const b of buttons) {
       b.disabled = dead;
       b.title = tip;
@@ -263,89 +236,32 @@ export function idpOriginFrom(referrer) {
       allButton.title = dead
         ? tip
         : filtered
-          ? `Keys to the ${shown} roles your filters show, in one go · sign-in valid for ${remaining() || "a few minutes"}`
-          : `Keys to every role listed here, in one go · sign-in valid for ${remaining() || "a few minutes"}`;
+          ? `Keys to the ${shown} roles your filters show, in one go`
+          : "Keys to every role listed here, in one go";
     }
     if (note) {
       note.textContent = dead
-        ? "Sign-in expired · sign in again for new keys"
-        : `${filtered ? `${shown} of ${total}` : total} roles · sign-in valid ${remaining() || "a few minutes"}`;
+        ? "Sign-in expired"
+        : `${filtered ? `${shown} of ${total}` : total} roles`;
       note.classList.toggle("chc_note_expired", dead);
     }
-    showExpiredBanner(dead);
   };
 
-  // Once the sign-in is too old the page can no longer issue keys or start a
-  // console session, so say so across the top of the page, not only in the
-  // small note under one button. Dismissable; it stays dismissed.
-  let banner = null;
-  let bannerHidden = false;
-  const showExpiredBanner = (dead) => {
-    if (!dead || bannerHidden) {
-      if (banner) banner.hidden = true;
-      return;
-    }
-    if (!banner) {
-      banner = document.createElement("div");
-      banner.id = "chc_expired_banner";
-      banner.setAttribute("role", "alert");
-      const text = document.createElement("div");
-      text.className = "chc_banner_text";
-      const title = document.createElement("strong");
-      title.textContent = "This sign-in has expired.";
-      const body = document.createElement("span");
-      body.textContent =
-        " AWS accepts a sign-in page for about 5 minutes, so Keys and new sign-ins from this page will fail. Sign in to AWS again through your identity provider.";
-      text.append(title, body);
-      banner.appendChild(text);
-      if (idpOrigin) {
-        const again = document.createElement("a");
-        again.className = "chc_banner_action";
-        again.href = idpOrigin;
-        again.textContent = "Sign in again";
-        banner.appendChild(again);
-      }
-      const x = document.createElement("button");
-      x.type = "button";
-      x.className = "chc_banner_x";
-      x.setAttribute("aria-label", "Hide this message");
-      x.title = "Hide this message";
-      x.textContent = "×";
-      x.addEventListener("click", (e) => {
-        e.preventDefault();
-        bannerHidden = true;
-        banner.hidden = true;
-      });
-      banner.appendChild(x);
-      document.body.insertBefore(banner, document.body.firstChild);
-    }
-    banner.hidden = false;
-  };
-
-  // Two pickers, two placements:
-  //  - Console Hopper: its rows are an 8-column grid with the Sign In button
-  //    as one cell. Keys goes into a cell of our own that wraps Sign In, so
-  //    the column count holds and nothing shifts.
-  //  - AWS's own picker: right after the role's label.
-  // Never the label while Console Hopper is on the page: it hides the label,
-  // and a button placed after it becomes the first grid item.
-  const placeRowButton = (entry, mode) => {
+  // Console Hopper's rows are an 8-column grid with the Sign In button as one
+  // cell. Keys goes into a cell of our own that wraps Sign In, so the column
+  // count holds and nothing shifts.
+  const placeRowButton = (entry) => {
     if (entry.row.querySelector(".chc_btn")) return;
-    let parent = null;
-    if (mode === "hopper") {
-      const signin = entry.row.querySelector(".tm_signin_button");
-      if (!signin) return;
-      parent = signin.parentElement;
-      if (!parent || !parent.classList.contains("chc_row_actions")) {
-        parent = document.createElement("span");
-        parent.className = "chc_row_actions";
-        signin.replaceWith(parent);
-        parent.appendChild(signin);
-      }
-    } else {
-      parent = entry.row;
+    const signin = entry.row.querySelector(".tm_signin_button");
+    if (!signin) return;
+    let parent = signin.parentElement;
+    if (!parent || !parent.classList.contains("chc_row_actions")) {
+      parent = document.createElement("span");
+      parent.className = "chc_row_actions";
+      signin.replaceWith(parent);
+      parent.appendChild(signin);
     }
-    const b = makeButton("Keys", mode === "plain" ? "chc_plain" : "", "");
+    const b = makeButton("Keys", "", "");
     b.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -353,22 +269,12 @@ export function idpOriginFrom(referrer) {
       open([itemFor(entry)]);
     });
     buttons.add(b);
-    if (mode === "plain") {
-      const label = entry.row.querySelector("label");
-      if (label) label.insertAdjacentElement("afterend", b);
-      else parent.appendChild(b);
-    } else {
-      parent.appendChild(b);
-    }
+    parent.appendChild(b);
   };
 
-  const placeAllButton = (container, mode) => {
+  const placeAllButton = (container) => {
     if (allButton) return;
-    allButton = makeButton(
-      "Keys for all roles",
-      mode === "plain" ? "chc_plain" : "chc_all",
-      ""
-    );
+    allButton = makeButton("Keys for all roles", "chc_all", "");
     allButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -430,7 +336,7 @@ export function idpOriginFrom(referrer) {
   // Console Hopper builds its jump rows again when their destinations
   // change, so this runs once now and again whenever the list changes.
   const layoutHopperRows = () => {
-    for (const entry of roleRows()) placeRowButton(entry, "hopper");
+    for (const entry of roleRows()) placeRowButton(entry);
     placeJumpSpacers();
   };
 
@@ -448,7 +354,7 @@ export function idpOriginFrom(referrer) {
         document.body;
       column.appendChild(holder);
     }
-    placeAllButton(holder, "hopper");
+    placeAllButton(holder);
     placeMenuEntry();
     refreshState();
     // The Sign In cell is wider now. Console Hopper fits its name columns to
@@ -456,31 +362,36 @@ export function idpOriginFrom(referrer) {
     window.dispatchEvent(new Event("resize"));
   };
 
-  const layoutPlain = () => {
-    for (const entry of roleRows()) placeRowButton(entry, "plain");
+  // No Keys without Console Hopper 1.9.0+: say what is missing, where Keys
+  // would have been (Console Hopper's right column when an older one is on
+  // the page, beside AWS's own Sign In button when there is none).
+  const showRequirement = (older) => {
+    if (document.getElementById("chc_requirement")) return;
+    const box = document.createElement("div");
+    box.id = "chc_requirement";
+    box.setAttribute("role", "note");
+    const text = document.createElement("span");
+    text.textContent = older
+      ? `Console Hopper Creds needs Console Hopper ${CH_MIN_VERSION} or later. Update Console Hopper to get Keys here.`
+      : `Console Hopper Creds works on top of Console Hopper ${CH_MIN_VERSION} or later, which is not on this page.`;
+    const link = document.createElement("a");
+    link.href = CH_HOME;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = "Get Console Hopper";
+    box.append(text, " ", link);
+    const column = older && document.querySelector(".tm_right_column");
     const signin = document.getElementById("signin_button");
-    let holder = document.getElementById("chc_toolbar_plain");
-    if (!holder) {
-      holder = document.createElement("span");
-      holder.id = "chc_toolbar_plain";
-      if (signin && signin.parentElement)
-        signin.insertAdjacentElement("afterend", holder);
-      else
-        (document.getElementById("saml_form") || document.body).appendChild(
-          holder
-        );
-      const gear = document.createElement("button");
-      gear.type = "button";
-      gear.className = "chc_btn chc_plain";
-      gear.textContent = "Creds settings";
-      gear.addEventListener("click", (e) => {
-        e.preventDefault();
-        openSettings();
-      });
-      holder.appendChild(gear);
-    }
-    placeAllButton(holder, "plain");
-    refreshState();
+    if (column) column.appendChild(box);
+    else if (signin && signin.parentElement)
+      signin.insertAdjacentElement("afterend", box);
+    else
+      (document.getElementById("saml_form") || document.body).appendChild(box);
+    log(
+      older
+        ? `Console Hopper is older than ${CH_MIN_VERSION}; no Keys buttons.`
+        : "Console Hopper is not on this page; no Keys buttons."
+    );
   };
 
   // --- which picker is this? -------------------------------------------
@@ -501,22 +412,27 @@ export function idpOriginFrom(referrer) {
     );
 
   let done = false;
-  const finish = (fn) => {
+  const start = () => {
     if (done) return;
     done = true;
-    fn();
-    // The countdown ticks; the shown-row count follows filters the moment
-    // Console Hopper hides or shows a row (an inline display change), and
-    // rows it builds anew get their cell back.
+    if (!consoleHopperSupported(root)) {
+      showRequirement(true);
+      return;
+    }
+    layoutWithConsoleHopper();
+    // Keys greys out when Console Hopper's clock runs out; the shown-row
+    // count follows filters the moment Console Hopper hides or shows a row
+    // (an inline display change), and rows it builds anew get their cell
+    // back.
     setInterval(refreshState, 1000);
-    const list =
-      document.getElementById("tm_role_list") ||
-      document.getElementById("saml_form");
+    new MutationObserver(refreshState).observe(root, {
+      attributes: true,
+      attributeFilter: [CH_SIGNIN_EXPIRED_ATTR, CH_SIGNIN_UNTIL_ATTR],
+    });
+    const list = document.getElementById("tm_role_list");
     if (list) {
-      const hopper = fn === layoutWithConsoleHopper;
       new MutationObserver((mutations) => {
-        if (hopper && mutations.some((m) => m.type === "childList"))
-          layoutHopperRows();
+        if (mutations.some((m) => m.type === "childList")) layoutHopperRows();
         refreshState();
       }).observe(list, {
         attributes: true,
@@ -526,28 +442,32 @@ export function idpOriginFrom(referrer) {
       });
     }
   };
+  const giveUp = () => {
+    if (done) return;
+    done = true;
+    showRequirement(false);
+  };
 
   if (chLaidOut()) {
-    finish(layoutWithConsoleHopper);
+    start();
   } else {
     // Both content scripts run at document_end and Chrome gives no order
     // between extensions: give Console Hopper a moment to appear, then wait
-    // for its rows; with no sign of it, the page is AWS's plain picker.
+    // for its rows. With no sign of it, or no rows after a long wait (it
+    // stepped aside as a duplicate copy, say), there is nothing to add to.
     const started = Date.now();
     const poll = setInterval(() => {
       if (done) return clearInterval(poll);
       const waited = Date.now() - started;
       if (chLaidOut()) {
         clearInterval(poll);
-        finish(layoutWithConsoleHopper);
-      } else if (waited > CH_WAIT_MS && !chPresent()) {
+        start();
+      } else if (
+        (waited > CH_WAIT_MS && !chPresent()) ||
+        waited > CH_ROWS_WAIT_MS
+      ) {
         clearInterval(poll);
-        finish(layoutPlain);
-      } else if (waited > CH_ROWS_WAIT_MS) {
-        // Console Hopper is here but never built its rows (it stepped aside
-        // as a duplicate copy, say): the page is still AWS's picker.
-        clearInterval(poll);
-        finish(chLaidOut() ? layoutWithConsoleHopper : layoutPlain);
+        giveUp();
       }
     }, 150);
   }

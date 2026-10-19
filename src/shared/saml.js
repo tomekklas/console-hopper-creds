@@ -3,19 +3,13 @@
 // runs in the content script (which has one) and in tests (jsdom).
 //
 // Nothing here keeps or sends the assertion; it is read for the role list,
-// the session name, the IdP's requested duration and the validity window.
+// the session name and the IdP's requested duration.
 
 export const AWS_ATTR_ROLE = "https://aws.amazon.com/SAML/Attributes/Role";
 export const AWS_ATTR_SESSION_NAME =
   "https://aws.amazon.com/SAML/Attributes/RoleSessionName";
 export const AWS_ATTR_SESSION_DURATION =
   "https://aws.amazon.com/SAML/Attributes/SessionDuration";
-
-// STS redeems a response only within five minutes of its IssueInstant
-// ("Token must be redeemed within 5 minutes of issuance"), whatever
-// NotOnOrAfter says. 4.5 minutes, as Console Hopper uses for the same check,
-// leaves room for clock skew and the calls still in flight.
-export const SAML_FRESH_MS = 4.5 * 60 * 1000;
 
 const ROLE_ARN_RE = /^arn:(aws[a-z0-9-]*):iam::(\d{12}):role\/.+$/;
 const PROVIDER_ARN_RE = /^arn:(aws[a-z0-9-]*):iam::(\d{12}):saml-provider\/.+$/;
@@ -145,19 +139,6 @@ export function parseAssertion(xml, DOMParserImpl) {
     }
   }
   return out;
-}
-
-// When AWS stops accepting this response, in ms since the epoch: the
-// earlier of NotOnOrAfter and IssueInstant + SAML_FRESH_MS (an IdP may stamp
-// NotOnOrAfter ten minutes out, but STS still refuses after five). Null
-// when the response says nothing about time.
-export function validUntil(parsed) {
-  if (!parsed) return null;
-  const has = (t) => t !== null && t !== undefined;
-  const ends = [];
-  if (has(parsed.notOnOrAfter)) ends.push(parsed.notOnOrAfter);
-  if (has(parsed.issueInstant)) ends.push(parsed.issueInstant + SAML_FRESH_MS);
-  return ends.length ? Math.min(...ends) : null;
 }
 
 // "eu-west-1" from "eu-west-1.signin.aws.amazon.com"; null for the global

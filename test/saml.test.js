@@ -4,12 +4,10 @@ import {
   decodeSamlResponse,
   parseRolePair,
   parseAssertion,
-  validUntil,
   signinRegionFromHost,
   partitionOf,
   accountOf,
   roleNameOf,
-  SAML_FRESH_MS,
 } from "../src/shared/saml.js";
 
 const ROLE = "arn:aws:iam::111122223333:role/PowerUser";
@@ -126,42 +124,6 @@ describe("parseAssertion", () => {
   it("survives garbage", () => {
     const p = parseAssertion("not xml at all <<<");
     expect(p.roles).toEqual([]);
-  });
-});
-
-describe("validUntil", () => {
-  const issued = Date.parse("2026-10-15T12:00:00Z");
-
-  it("is 4.5 minutes, matching Console Hopper", () => {
-    expect(SAML_FRESH_MS).toBe(4.5 * 60 * 1000);
-  });
-  it("ends 4.5 min after issue when NotOnOrAfter is 10 min out (mock-saml)", () => {
-    const parsed = parseAssertion(
-      assertionXml({ notOnOrAfter: "2026-10-15T12:10:00Z" })
-    );
-    expect(parsed.notOnOrAfter).toBe(Date.parse("2026-10-15T12:10:00Z"));
-    expect(validUntil(parsed)).toBe(Date.parse("2026-10-15T12:04:30Z"));
-    expect(validUntil(parsed)).toBe(issued + SAML_FRESH_MS);
-  });
-  it("ends 4.5 min after issue when NotOnOrAfter is AWS's 5 min", () => {
-    expect(validUntil(parseAssertion(assertionXml()))).toBe(
-      issued + SAML_FRESH_MS
-    );
-  });
-  it("keeps an earlier NotOnOrAfter", () => {
-    expect(
-      validUntil(
-        parseAssertion(assertionXml({ notOnOrAfter: "2026-10-15T12:02:00Z" }))
-      )
-    ).toBe(Date.parse("2026-10-15T12:02:00Z"));
-  });
-  it("uses whichever time it has, else null", () => {
-    expect(validUntil({ notOnOrAfter: null, issueInstant: 1000 })).toBe(
-      1000 + SAML_FRESH_MS
-    );
-    expect(validUntil({ notOnOrAfter: 5000, issueInstant: null })).toBe(5000);
-    expect(validUntil({ notOnOrAfter: null, issueInstant: null })).toBeNull();
-    expect(validUntil(null)).toBeNull();
   });
 });
 

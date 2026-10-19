@@ -29,9 +29,9 @@ Developer Tools
 English (United States)
 
 
---- Single purpose description (max 1000 chars; this is 908) -----------
+--- Single purpose description (max 1000 chars; this is 957) -----------
 
-Console Hopper Creds adds a Keys button to each role on the AWS Identity Federation sign-in page (https://signin.aws.amazon.com/saml and its regional hosts) and a Keys for all roles button for the whole list. When the user clicks one, the extension exchanges the page's own SAML response for temporary credentials by calling AWS Security Token Service (AssumeRoleWithSAML) for the chosen role or roles, and shows the result in a dialog on that page in the forms a developer pastes into a terminal or a config file: environment variables for four shells, a credentials-file profile, the individual values, further snippet formats and the user's own templates. The credentials exist only while the dialog is open; nothing is stored, logged or sent anywhere but AWS. Settings cover session length, profile-name pattern, region and templates. It does one thing: turn a SAML sign-in into command-line credentials.
+Console Hopper Creds, a companion to Console Hopper (1.9.0 or later), adds a Keys button to each role on the AWS Identity Federation sign-in page (https://signin.aws.amazon.com/saml and its regional hosts) and a Keys for all roles button for the whole list. When the user clicks one, the extension exchanges the page's own SAML response for temporary credentials by calling AWS Security Token Service (AssumeRoleWithSAML) for the chosen role or roles, and shows the result in a dialog on that page in the forms a developer pastes into a terminal or a config file: environment variables for four shells, a credentials-file profile, the individual values, further snippet formats and the user's own templates. The credentials exist only while the dialog is open; nothing is stored, logged or sent anywhere but AWS. Settings cover session length, profile-name pattern, region and templates. It does one thing: turn a SAML sign-in into command-line credentials.
 
 
 --- Permission justification: storage (max 1000 chars; this is 426) ----
@@ -42,9 +42,9 @@ Persists the user's settings in chrome.storage.sync: the session length to ask A
 (The dashboard asks for a host permission justification because of the
 content script's match patterns; there is no other host permission.)
 
---- Host permission justification (max 1000 chars; this is 957) --------
+--- Host permission justification (max 1000 chars; this is 940) --------
 
-The content script runs only on https://signin.aws.amazon.com/saml and https://*.signin.aws.amazon.com/saml, AWS's SAML role picker. There it reads the page's own SAMLResponse form field to list the roles the identity provider granted, and the page's referrer (its origin only) to link back to the identity provider once the sign-in has expired, places a Keys button beside each role and a Keys for all roles button, and shows the credentials dialog when the user clicks one. No other page is touched and page content is never transmitted anywhere but to AWS: when the user clicks Keys, the SAML response and the chosen role ARN go to AWS Security Token Service (sts.<region>.amazonaws.com, or the GovCloud / China equivalent) in an AssumeRoleWithSAML request made by the service worker. That endpoint permits any origin, so no host permission for it is declared. The extension makes no other network requests, and none to servers controlled by its authors.
+The content script runs only on https://signin.aws.amazon.com/saml and https://*.signin.aws.amazon.com/saml, AWS's SAML role picker. There it reads the page's own SAMLResponse form field to list the roles the identity provider granted, and the sign-in expiry that Console Hopper (which the extension requires) marks on the page, places a Keys button beside each role and a Keys for all roles button, and shows the credentials dialog when the user clicks one. No other page is touched and page content is never transmitted anywhere but to AWS: when the user clicks Keys, the SAML response and the chosen role ARN go to AWS Security Token Service (sts.<region>.amazonaws.com, or the GovCloud / China equivalent) in an AssumeRoleWithSAML request made by the service worker. That endpoint permits any origin, so no host permission for it is declared. The extension makes no other network requests, and none to servers controlled by its authors.
 
 
 --- Are you using remote code? --------------------------------------
@@ -114,8 +114,6 @@ screenshot-2-keys.png ..... The Keys dialog — shells, profile block, masked va
 screenshot-3-all.png ...... Keys for all roles — the table and the bulk export select
 screenshot-5-settings.png . Creds Settings — session length, pattern, region, a template
 
-Not shot: AWS's plain picker without Console Hopper (planned as
-screenshot-4-plain.png); optional, the store needs at least one.
 
 
 --- Distribution -----------------------------------------------------
@@ -124,3 +122,8 @@ Visibility ....... Public
 Pricing .......... Free
 Regions .......... All regions
 Mature content ... No
+
+
+--- Notes for reviewers (paste into any "test instructions" field) -----
+
+Console Hopper Creds is a companion extension: it needs Console Hopper 1.9.0 or later (https://consolehopper.com/), installed alongside it. It runs only on the AWS SAML role-picker page (https://signin.aws.amazon.com/saml), which is reached by signing in to AWS through a SAML identity provider. Without Console Hopper 1.9.0+ on that page it shows a short note instead of its buttons.

@@ -39,11 +39,23 @@ const chromeDouble = (
   return sent;
 };
 
-// The picker as Console Hopper 1.8.0 leaves it: a guard attribute on <html>,
-// the interface wrapper with its right column, the side menu, and rows whose
-// Sign In button is one of four direct children of .tm_role_buttons.
-const hopperPicker = () => {
-  document.documentElement.setAttribute("data-console-hopper", "abcdef");
+// The picker as Console Hopper leaves it: a guard attribute on <html> (and,
+// from 1.9.0, its sign-in expiry attributes), the interface wrapper with its
+// right column, the side menu, and rows whose Sign In button is one of four
+// direct children of .tm_role_buttons.
+const hopperPicker = ({
+  version = "1.9.0",
+  until = Date.now() + 4.5 * 60 * 1000,
+  expired = false,
+} = {}) => {
+  const root = document.documentElement;
+  root.setAttribute("data-console-hopper", "abcdef");
+  if (version !== "1.8.0") {
+    root.setAttribute("data-console-hopper-expiry-ui", "1");
+    if (until !== null)
+      root.setAttribute("data-console-hopper-signin-until", String(until));
+    if (expired) root.setAttribute("data-console-hopper-signin-expired", "1");
+  }
   document.body.innerHTML = `
     <form id="saml_form">
       <input type="hidden" name="SAMLResponse" value="${b64}">
@@ -94,7 +106,13 @@ beforeEach(() => {
   vi.resetModules();
   vi.useRealTimers();
   document.documentElement.removeAttribute("data-chc-loaded");
-  document.documentElement.removeAttribute("data-console-hopper");
+  [
+    "data-console-hopper",
+    "data-console-hopper-expiry-ui",
+    "data-console-hopper-signin-until",
+    "data-console-hopper-signin-expired",
+  ].forEach((a) => document.documentElement.removeAttribute(a));
+  document.getElementById("chc_requirement")?.remove();
   document.querySelectorAll("style").forEach((s) => s.remove());
 });
 
@@ -114,7 +132,6 @@ describe("with Console Hopper on the page", () => {
     for (const row of direct) {
       const btns = row.querySelectorAll(".chc_btn");
       expect(btns).toHaveLength(1);
-      expect(btns[0].classList.contains("chc_plain")).toBe(false);
       // Keys sits in a cell of ours that also holds Sign In, and that cell is
       // the direct grid child where Sign In used to be: still 4 items.
       const cell = btns[0].parentElement;
@@ -193,22 +210,9 @@ describe("with Console Hopper on the page", () => {
     expect(all.disabled).toBe(true);
   });
 
-  it("tells the person to sign in again once the sign-in is too old", async () => {
+  it("greys out Keys once Console Hopper says the sign-in has expired", async () => {
     const sent = chromeDouble();
-    hopperPicker();
-    Object.defineProperty(document, "referrer", {
-      value: "https://idp.example.com/app/aws/sso?x=1",
-      configurable: true,
-    });
-    // Issued six minutes ago: past the 4.5 minutes STS is trusted for.
-    const old = new Date(Date.now() - 6 * 60 * 1000).toISOString();
-    document.querySelector('input[name="SAMLResponse"]').value = btoa(
-      unescape(
-        encodeURIComponent(
-          xml.replace(/IssueInstant="[^"]+"/, `IssueInstant="${old}"`)
-        )
-      )
-    );
+    hopperPicker({ until: Date.now() - 1000, expired: true });
     await import("../src/content/index.js");
     await flush();
 
@@ -222,42 +226,47 @@ describe("with Console Hopper on the page", () => {
       );
     }
     const note = document.querySelector("#chc_toolbar .chc_toolbar_note");
-    expect(note.textContent).toMatch(/Sign-in expired/);
+    expect(note.textContent).toBe("Sign-in expired");
     expect(note.classList.contains("chc_note_expired")).toBe(true);
 
-    // A banner across the top of the page says so, and links back to the
-    // identity provider the person came from.
-    const banner = document.getElementById("chc_expired_banner");
-    expect(banner).not.toBeNull();
-    expect(banner.hidden).toBe(false);
-    expect(document.body.firstElementChild).toBe(banner);
-    expect(banner.getAttribute("role")).toBe("alert");
-    expect(banner.textContent).toMatch(/This sign-in has expired/);
-    expect(banner.textContent).toMatch(/identity provider/);
-    const again = banner.querySelector(".chc_banner_action");
-    expect(again.getAttribute("href")).toBe("https://idp.example.com");
-    expect(again.textContent).toBe("Sign in again");
+    // Console Hopper owns the banner; the add-on draws none of its own.
+    expect(document.querySelector('[role="alert"]')).toBeNull();
 
     rowKeys[0].click();
     all.click();
     await flush();
     expect(sent).toHaveLength(0);
     expect(document.querySelector('[data-chc="dialog"]')).toBeNull();
-
-    // Hidden on request, and it stays hidden as the clock ticks on.
-    banner.querySelector(".chc_banner_x").click();
-    expect(banner.hidden).toBe(true);
-    await new Promise((r) => setTimeout(r, 1100));
-    expect(banner.hidden).toBe(true);
   });
 
-  it("shows no banner while the sign-in is fresh", async () => {
+  it("follows Console Hopper's clock: no countdown, greys out when it flips", async () => {
     chromeDouble();
     hopperPicker();
     await import("../src/content/index.js");
     await flush();
-    const banner = document.getElementById("chc_expired_banner");
-    expect(banner === null || banner.hidden).toBe(true);
+    const note = document.querySelector("#chc_toolbar .chc_toolbar_note");
+    const all = document.querySelector("#chc_toolbar .chc_btn");
+    expect(note.textContent).toBe("2 roles");
+    expect(all.disabled).toBe(false);
+    expect(all.title).not.toMatch(/\d:\d\d/);
+
+    document.documentElement.setAttribute(
+      "data-console-hopper-signin-expired",
+      "1"
+    );
+    await flush(); // the attribute change is observed, no tick needed
+    expect(all.disabled).toBe(true);
+    expect(note.textContent).toBe("Sign-in expired");
+  });
+
+  it("never expires when Console Hopper published no time", async () => {
+    chromeDouble();
+    hopperPicker({ until: null });
+    await import("../src/content/index.js");
+    await flush();
+    expect(document.querySelector("#chc_toolbar .chc_btn").disabled).toBe(
+      false
+    );
   });
 
   it("keeps its own cursor inside Console Hopper's rows", async () => {
@@ -304,7 +313,7 @@ describe("with Console Hopper on the page", () => {
     list.innerHTML = "";
     await import("../src/content/index.js");
     await vi.advanceTimersByTimeAsync(3000);
-    expect(document.querySelector(".chc_btn")).toBeNull(); // not plain mode
+    expect(document.querySelector(".chc_btn")).toBeNull(); // still waiting
     list.innerHTML = saved;
     await vi.advanceTimersByTimeAsync(400);
     expect(document.querySelectorAll(".chc_row_actions .chc_btn")).toHaveLength(
@@ -383,22 +392,34 @@ describe("keys for all roles, every call failed", () => {
   });
 });
 
-describe("on AWS's plain picker", () => {
-  it("places buttons after the labels once Console Hopper has not shown up", async () => {
+describe("without Console Hopper 1.9.0 or later", () => {
+  it("says so on AWS's plain picker, and adds no Keys", async () => {
     vi.useFakeTimers();
     chromeDouble();
     plainPicker();
     await import("../src/content/index.js");
-    await vi.advanceTimersByTimeAsync(50);
-    expect(document.querySelector(".chc_btn")).toBeNull();
     await vi.advanceTimersByTimeAsync(2000);
-    const btns = [...document.querySelectorAll(".saml-role .chc_btn")];
-    expect(btns).toHaveLength(2); // the role missing from the assertion gets none
-    expect(btns[0].previousElementSibling.tagName).toBe("LABEL");
-    const holder = document.getElementById("chc_toolbar_plain");
-    expect(holder.querySelectorAll(".chc_btn")).toHaveLength(2); // settings + all
-    expect(holder.textContent).toContain("Keys for all roles");
-    expect(holder.textContent).toContain("Creds settings");
+    expect(document.querySelector(".chc_btn")).toBeNull();
+    const notice = document.getElementById("chc_requirement");
+    expect(notice).not.toBeNull();
+    expect(notice.textContent).toMatch(/Console Hopper 1\.9\.0 or later/);
+    expect(notice.previousElementSibling.id).toBe("signin_button");
+    expect(notice.querySelector("a").getAttribute("href")).toBe(
+      "https://consolehopper.com/"
+    );
+  });
+
+  it("says so in an older Console Hopper's right column, and adds no Keys", async () => {
+    chromeDouble();
+    hopperPicker({ version: "1.8.0" });
+    await import("../src/content/index.js");
+    await flush();
+    await flush();
+    expect(document.querySelector(".chc_btn")).toBeNull();
+    expect(document.querySelector(".chc_menu_action")).toBeNull();
+    const notice = document.getElementById("chc_requirement");
+    expect(notice.parentElement.className).toBe("tm_right_column");
+    expect(notice.textContent).toMatch(/Update Console Hopper/);
   });
 });
 
@@ -425,29 +446,19 @@ describe("guards", () => {
   });
 });
 
-describe("idpOriginFrom", () => {
-  it("keeps only an identity provider's origin", async () => {
+describe("reading Console Hopper's page attributes", () => {
+  it("knows 1.9.0+ by its expiry marker and reads its time", async () => {
     chromeDouble();
-    const { idpOriginFrom } = await import("../src/content/index.js");
-    expect(
-      idpOriginFrom("https://acme.okta.com/home/aws/123?fromHome=true")
-    ).toBe("https://acme.okta.com");
-    expect(idpOriginFrom("http://localhost:4000/")).toBe(
-      "http://localhost:4000"
-    );
-  });
-
-  it("offers nothing for AWS's own pages, other schemes or no referrer", async () => {
-    chromeDouble();
-    const { idpOriginFrom } = await import("../src/content/index.js");
-    expect(idpOriginFrom("")).toBe("");
-    expect(idpOriginFrom("not a url")).toBe("");
-    expect(idpOriginFrom("https://signin.aws.amazon.com/saml")).toBe("");
-    expect(idpOriginFrom("https://eu-west-1.signin.aws.amazon.com/saml")).toBe(
-      ""
-    );
-    expect(idpOriginFrom("https://console.amazonaws.cn/")).toBe("");
-    expect(idpOriginFrom("javascript:alert(1)")).toBe("");
-    expect(idpOriginFrom("file:///tmp/x.html")).toBe("");
+    const { consoleHopperSupported, consoleHopperSigninUntil } =
+      await import("../src/content/index.js");
+    const root = document.createElement("html");
+    expect(consoleHopperSupported(root)).toBe(false);
+    expect(consoleHopperSigninUntil(root)).toBeNull();
+    root.setAttribute("data-console-hopper-expiry-ui", "1");
+    root.setAttribute("data-console-hopper-signin-until", "1760781234567");
+    expect(consoleHopperSupported(root)).toBe(true);
+    expect(consoleHopperSigninUntil(root)).toBe(1760781234567);
+    root.setAttribute("data-console-hopper-signin-until", "soon");
+    expect(consoleHopperSigninUntil(root)).toBeNull();
   });
 });

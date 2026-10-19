@@ -12,13 +12,16 @@ might paste: environment variables for four shells, a profile for
 with a profile per role, and follows Console Hopper's filters: narrow the
 picker to one organisation or environment and you get keys for just those.
 
-It is a companion to [Console Hopper](https://github.com/tomekklas/console-hopper),
-but a one-sided one: Console Hopper contains nothing for it and knows
-nothing about it. This extension adds its buttons to the page Console
-Hopper has built (a Keys button inside each Sign In cell, a button in the
-right-hand column, a **Creds Settings** entry at the end of the side menu),
-the same way it adds them to AWS's plain picker when Console Hopper is not
-installed. The two extensions never communicate; they share only the page.
+It is a companion to [Console Hopper](https://consolehopper.com/) and
+**needs Console Hopper 1.9.0 or later**. It adds its buttons to the page
+Console Hopper has built (a Keys button inside each Sign In cell, a button
+in the right-hand column, a **Creds Settings** entry at the end of the side
+menu). Console Hopper owns the sign-in's expiry: it shows the banner when
+AWS stops accepting the page, and publishes the time on `<html>`
+(`data-console-hopper-signin-until`, `-signin-expired`, `-expiry-ui`);
+this extension reads that to grey out Keys. The two extensions never send
+each other messages; they share only the page. Without Console Hopper
+1.9.0+ on the page, the extension shows a short notice instead of Keys.
 
 ## Why a separate extension
 
@@ -41,9 +44,8 @@ policies) actually prevents key issuance.
 1. The content script reads the `SAMLResponse` hidden field on the role
    picker and lists the roles in it (the
    `https://aws.amazon.com/SAML/Attributes/Role` attribute), the
-   `RoleSessionName`, the IdP's `SessionDuration`, and how long AWS will
-   still accept the response (`SubjectConfirmationData/@NotOnOrAfter`,
-   else five minutes from `IssueInstant`).
+   `RoleSessionName` and the IdP's `SessionDuration`. How long AWS will
+   still accept the response comes from Console Hopper's page attributes.
 2. A click sends the assertion and the chosen role(s) to the service
    worker, which POSTs `AssumeRoleWithSAML` to the **regional** STS
    endpoint of the sign-in page (regional tokens work in opt-in regions;
